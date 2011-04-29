@@ -1,0 +1,81 @@
+from collections import defaultdict
+from twisted.internet import reactor, protocol
+import struct
+from twisted.web.http_headers import Headers
+from message import IdentifiedMessage, ClientHello
+
+class fcp_protocol(protocol.Protocol):
+    def __init__(self):
+        self.handlers = defaultdict(dict)
+
+    def connectionMade(self):
+        self.sendMessage(ClientHello)
+
+    def dataReceived(self, data):
+        partial = data
+        while partial: 
+            partial = self.parseOne(partial)
+    
+    def parseOne(self, data):
+        safe_index = lambda x: data.index(x) if x in data else len(data)
+        endHeader = min(safe_index(p) for p in ['\nData\n', '\nEndMessage\n'])
+        header, data = data[:endHeader], data[endHeader:]
+
+        header = header.split('\n')
+        messageType = header[0]
+        message = dict(line.split('=') for line in header[1:])
+        if data.startswith('\nData\n'):
+            l = int(message['DataLength'])
+            data = data[len('\nData\n'):]
+            message['Data'], data = data[:l], data[l:]
+        else:
+            data = data[len('\nEndMessage\n'):]
+        print "Received {0}".format(messageType)
+        print message
+        if messageType in self.handlers:
+            handlers = self.handlers[messageType]
+            if type(handlers) == list:
+                for handler in handlers: handler(message)
+            else:
+                handler = handlers[message["Identifier"]]
+                handler(message)
+
+        return data
+
+    def sendMessage(self, message, data=None):
+        self.transport.write(message.name)
+        self.transport.write('\n')
+        for key, value in message.args:
+            self.transport.write(key)
+            self.transport.write('=')
+            self.transport.write(value)
+            self.transport.write('\n')
+        if not data:
+            self.transport.write('EndMessage\n')
+            print "Sent {0}".format(message.name)
+        else:
+            self.transport.write('DataLength={0}\n'.format(len(data)))
+            self.transport.write('Data\n')
+            self.transport.write(data)
+            print "Sent {0} (data length={1})".format(message.name, len(data))
+
+class fcp_test_protocol(fcp_protocol):
+    def connectionMade(self):
+        fcp_protocol.connectionMade(self)
+        self.handlers['NodeHello'] = [self.testGet]
+
+    def testGet(self, msg):
+        print "Testing get..."
+        uri = "KSK@test-data"
+        msg = IdentifiedMessage("ClientGet", [("URI", uri)])
+        self.sendMessage(msg)#, data="Testing 123...")
+
+def main():
+    factory = protocol.ClientFactory()
+    factory.protocol = fcp_test_protocol
+    reactor.connectTCP('localhost', 9481, factory)
+    reactor.run()
+
+if __name__ == '__main__':
+    main()
+
