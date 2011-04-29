@@ -1,12 +1,13 @@
 from collections import defaultdict
 from twisted.internet import reactor, protocol
+from twisted.internet.defer import Deferred
 import struct
 from twisted.web.http_headers import Headers
 from message import IdentifiedMessage, ClientHello
 
 class fcp_protocol(protocol.Protocol):
     def __init__(self):
-        self.handlers = defaultdict(dict)
+        self.deferred = defaultdict(Deferred)
 
     def connectionMade(self):
         self.sendMessage(ClientHello)
@@ -32,13 +33,12 @@ class fcp_protocol(protocol.Protocol):
             data = data[len('\nEndMessage\n'):]
         print "Received {0}".format(messageType)
         print message
-        if messageType in self.handlers:
-            handlers = self.handlers[messageType]
-            if type(handlers) == list:
-                for handler in handlers: handler(message)
+        if messageType in self.deferred:
+            deferred = self.deferred[messageType]
+            if isinstance(deferred, Deferred): 
+                deferred.callback(message)
             else:
-                handler = handlers[message["Identifier"]]
-                handler(message)
+                deferred[message['Identifier']].callback(message)
 
         return data
 
@@ -62,7 +62,7 @@ class fcp_protocol(protocol.Protocol):
 class fcp_test_protocol(fcp_protocol):
     def connectionMade(self):
         fcp_protocol.connectionMade(self)
-        self.handlers['NodeHello'] = [self.testGet]
+        self.deferred['NodeHello'].addCallback(self.testGet)
 
     def testGet(self, msg):
         print "Testing get..."
