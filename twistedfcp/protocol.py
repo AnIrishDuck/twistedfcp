@@ -2,7 +2,6 @@ from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 import struct
-from twisted.web.http_headers import Headers
 from message import IdentifiedMessage, ClientHello
 
 class fcp_protocol(protocol.Protocol):
