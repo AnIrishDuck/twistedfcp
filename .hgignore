@@ -1,0 +1,3 @@
+relre:^.+\.pyc$
+relre:^.+\.swp$
+glob:_trial_temp/*
