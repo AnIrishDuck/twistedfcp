@@ -16,3 +16,7 @@ class ClientHelloTest(unittest.TestCase):
 
         defer = creator.connectTCP('localhost', fcp_protocol.port)
         return defer.addCallback(cb)
+
+    def tearDown(self):
+        if self.client is not None:
+            self.client.transport.loseConnection()
