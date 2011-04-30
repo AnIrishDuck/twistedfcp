@@ -5,6 +5,7 @@ import struct
 from message import IdentifiedMessage, ClientHello
 
 class fcp_protocol(protocol.Protocol):
+    port = 9481
     def __init__(self):
         self.deferred = defaultdict(Deferred)
 
@@ -57,6 +58,9 @@ class fcp_protocol(protocol.Protocol):
             self.transport.write('Data\n')
             self.transport.write(data)
             print "Sent {0} (data length={1})".format(message.name, len(data))
+
+class FCPFactory(protocol.Factory):
+    protocol = fcp_protocol
 
 class fcp_test_protocol(fcp_protocol):
     def connectionMade(self):
