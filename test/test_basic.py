@@ -2,15 +2,15 @@ from datetime import datetime
 
 from twisted.internet import reactor, protocol
 from twisted.trial import unittest
-from twistedfcp.protocol import fcp_protocol, IdentifiedMessage
+from twistedfcp.protocol import FreenetClientProtocol, IdentifiedMessage
 
 def withClient(f):
     def _inner(self):
-        creator = protocol.ClientCreator(reactor, fcp_protocol)
+        creator = protocol.ClientCreator(reactor, FreenetClientProtocol)
         def cb(client):
             self.client = client
             return f(self, client)
-        defer = creator.connectTCP('localhost', fcp_protocol.port)
+        defer = creator.connectTCP('localhost', FreenetClientProtocol.port)
         return defer.addCallback(cb)
     return _inner
 

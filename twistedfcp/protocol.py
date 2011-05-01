@@ -4,7 +4,7 @@ from twisted.internet.defer import Deferred
 import struct
 from message import IdentifiedMessage, ClientHello
 
-class fcp_protocol(protocol.Protocol):
+class FreenetClientProtocol(protocol.Protocol):
     port = 9481
     def __init__(self):
         self.deferred = defaultdict(Deferred)
@@ -60,7 +60,7 @@ class fcp_protocol(protocol.Protocol):
             print "Sent {0} (data length={1})".format(message.name, len(data))
 
 class FCPFactory(protocol.Factory):
-    protocol = fcp_protocol
+    protocol = FreenetClientProtocol
 
 
 def main():
