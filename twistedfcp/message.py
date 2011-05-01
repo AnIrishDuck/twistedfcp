@@ -10,6 +10,12 @@ class IdentifiedMessage(Message):
         Message.__init__(self, *args)
         self.args.append(["Identifier", self.unused_identifier])
 
+    def __getitem__(self, el):
+        for k, v in self.args:
+            if k == el: return v
+
+        raise IndexError("The key {0} is not in the message.".format(el))
+
     @property
     def unused_identifier(self):
         i = "Request{0}".format(IdentifiedMessage.id)

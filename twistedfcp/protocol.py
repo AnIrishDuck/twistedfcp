@@ -46,9 +46,9 @@ class fcp_protocol(protocol.Protocol):
         self.transport.write(message.name)
         self.transport.write('\n')
         for key, value in message.args:
-            self.transport.write(key)
+            self.transport.write(str(key))
             self.transport.write('=')
-            self.transport.write(value)
+            self.transport.write(str(value))
             self.transport.write('\n')
         if not data:
             self.transport.write('EndMessage\n')
@@ -62,16 +62,6 @@ class fcp_protocol(protocol.Protocol):
 class FCPFactory(protocol.Factory):
     protocol = fcp_protocol
 
-class fcp_test_protocol(fcp_protocol):
-    def connectionMade(self):
-        fcp_protocol.connectionMade(self)
-        self.deferred['NodeHello'].addCallback(self.testGet)
-
-    def testGet(self, msg):
-        print "Testing get..."
-        uri = "KSK@test-data"
-        msg = IdentifiedMessage("ClientGet", [("URI", uri)])
-        self.sendMessage(msg)#, data="Testing 123...")
 
 def main():
     factory = protocol.ClientFactory()
