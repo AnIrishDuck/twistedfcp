@@ -1,7 +1,9 @@
+import struct
+import logging
+
 from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
-import struct
 from message import IdentifiedMessage, ClientHello
 
 class FreenetClientProtocol(protocol.Protocol):
@@ -31,8 +33,8 @@ class FreenetClientProtocol(protocol.Protocol):
             message['Data'], data = data[:l], data[l:]
         else:
             data = data[len('\nEndMessage\n'):]
-        print "Received {0}".format(messageType)
-        print message
+        logging.info("Received {0}".format(messageType))
+        logging.debug(message)
         if messageType in self.deferred:
             deferred = self.deferred[messageType]
             if isinstance(deferred, Deferred): 
@@ -52,16 +54,18 @@ class FreenetClientProtocol(protocol.Protocol):
             self.transport.write('\n')
         if not data:
             self.transport.write('EndMessage\n')
-            print "Sent {0}".format(message.name)
+            logging.info("Sent {0}".format(message.name))
+            logging.debug(message.args)
         else:
             self.transport.write('DataLength={0}\n'.format(len(data)))
             self.transport.write('Data\n')
             self.transport.write(data)
-            print "Sent {0} (data length={1})".format(message.name, len(data))
+            logging.info("Sent {0} (data length={1})".format(message.name, 
+                                                             len(data)))
+            logging.debug(message.args)
 
 class FCPFactory(protocol.Factory):
     protocol = FreenetClientProtocol
-
 
 def main():
     factory = protocol.ClientFactory()
