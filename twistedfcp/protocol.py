@@ -1,3 +1,11 @@
+"""
+Twisted implementation of the Freenet Client Protocol. Defines a class, 
+``FreenetClientProtocol`` that can connect to the Freenet server.
+
+Similarly, defines a factory ``FCPFactory`` that produces 
+``FreenetClientProtocol`` objects when connected to a reactor.
+
+"""
 import struct
 import logging
 
@@ -7,19 +15,30 @@ from twisted.internet.defer import Deferred
 from message import IdentifiedMessage, ClientHello
 
 class FreenetClientProtocol(protocol.Protocol):
+    """
+    Definition of the Freenet Client Protocol. 
+
+    """
     port = 9481
     def __init__(self):
         self.deferred = defaultdict(Deferred)
 
     def connectionMade(self):
+        "On connection, sends a FCP ClientHello message."
         self.sendMessage(ClientHello)
 
     def dataReceived(self, data):
+        "Parses in received packets until none remain."
         partial = data
         while partial: 
-            partial = self.parseOne(partial)
+            partial = self._parseOne(partial)
     
-    def parseOne(self, data):
+    def _parseOne(self, data):
+        """
+        Parses a single packet from ``data`` and handles it. Returns the remnant
+        of the ``data`` after the first message has been removed.
+
+        """
         safe_index = lambda x: data.index(x) if x in data else len(data)
         endHeader = min(safe_index(p) for p in ['\nData\n', '\nEndMessage\n'])
         header, data = data[:endHeader], data[endHeader:]
@@ -45,6 +64,12 @@ class FreenetClientProtocol(protocol.Protocol):
         return data
 
     def sendMessage(self, message, data=None):
+        """
+        Sends a single ``message`` to the server. If ``data`` is specified, it
+        gets tacked on to the end of the message and a ``DataLength`` field is
+        added to the message arguments.
+
+        """
         self.transport.write(message.name)
         self.transport.write('\n')
         for key, value in message.args:
@@ -65,6 +90,7 @@ class FreenetClientProtocol(protocol.Protocol):
             logging.debug(message.args)
 
 class FCPFactory(protocol.Factory):
+    "A protocol factory that uses FCP."
     protocol = FreenetClientProtocol
 
 def main():
