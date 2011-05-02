@@ -5,6 +5,7 @@ from twisted.trial import unittest
 from twistedfcp.protocol import FreenetClientProtocol, IdentifiedMessage
 
 def withClient(f):
+    "Obtains a client and passes it to the wrapped function as an argument."
     def _inner(self):
         creator = protocol.ClientCreator(reactor, FreenetClientProtocol)
         def cb(client):
@@ -44,6 +45,7 @@ class FCPBaseTest(unittest.TestCase):
             self.client.transport.loseConnection()
 
 class ClientHelloTest(FCPBaseTest):
+    "Tests that the Freenet node responds to a ClientHello message."
     @withClient
     @sequence
     def test_hello(self, client):
@@ -51,6 +53,7 @@ class ClientHelloTest(FCPBaseTest):
         self.assertEquals(msg['FCPVersion'], '2.0')
 
 class GetPutTest(FCPBaseTest):
+    "Tests get/put messages to the Freenet node."
     @withClient
     @sequence
     def test_ksk(self, client):
