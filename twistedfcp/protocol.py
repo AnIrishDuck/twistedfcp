@@ -12,7 +12,7 @@ import logging
 from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
-from message import IdentifiedMessage, ClientHello
+from message import Message, IdentifiedMessage, ClientHello
 
 class FreenetClientProtocol(protocol.Protocol):
     """
@@ -22,6 +22,7 @@ class FreenetClientProtocol(protocol.Protocol):
     port = 9481
     def __init__(self):
         self.deferred = defaultdict(Deferred)
+        self.sessions = defaultdict(Deferred)
 
     def connectionMade(self):
         "On connection, sends a FCP ClientHello message."
@@ -54,14 +55,19 @@ class FreenetClientProtocol(protocol.Protocol):
             data = data[len('\nEndMessage\n'):]
         logging.info("Received {0}".format(messageType))
         logging.debug(message)
+        self._process(message, messageType)
+        return data
+
+    def _process(self, message, messageType):
         if messageType in self.deferred:
             deferred = self.deferred[messageType]
-            if isinstance(deferred, Deferred): 
-                deferred.callback(message)
-            else:
-                deferred[message['Identifier']].callback(message)
-
-        return data
+            deferred.callback(message)
+        if 'Identifier' in message: 
+            session_id = message['Identifier']
+            if session_id in self.sessions:
+                defer = self.sessions[session_id]
+                del self.sessions[session_id]
+                result = defer.callback(Message(messageType, message.items()))
 
     def sendMessage(self, message, data=None):
         """
@@ -88,6 +94,20 @@ class FreenetClientProtocol(protocol.Protocol):
             logging.info("Sent {0} (data length={1})".format(message.name, 
                                                              len(data)))
             logging.debug(message.args)
+
+    def get_direct(self, uri):
+        done = Deferred()
+        get = IdentifiedMessage("ClientGet", [("URI", uri)])
+        session_id = get.id
+        def process(message):
+            if message.name == "AllData":
+                done.callback(message)
+            else:
+                self.sessions[session_id].addCallback(process)
+
+        self.sessions[session_id].addCallback(process)
+        self.sendMessage(get)
+        return done
 
 class FCPFactory(protocol.Factory):
     "A protocol factory that uses FCP."

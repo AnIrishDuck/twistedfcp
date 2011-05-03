@@ -2,8 +2,11 @@ from datetime import datetime
 
 from twisted.internet import reactor, protocol
 from twisted.trial import unittest
-from twistedfcp.protocol import FreenetClientProtocol, IdentifiedMessage
+from twistedfcp.protocol import (FreenetClientProtocol, IdentifiedMessage, 
+                                 logging)
 from twistedfcp.util import sequence
+
+logging.basicConfig(filename="twistedfcp.log", level=logging.DEBUG)
 
 def withClient(f):
     "Obtains a client and passes it to the wrapped function as an argument."
@@ -15,7 +18,6 @@ def withClient(f):
         defer = creator.connectTCP('localhost', FreenetClientProtocol.port)
         return defer.addCallback(cb)
     return _inner
-
 
 class FCPBaseTest(unittest.TestCase):
     "We always want to clean up after the test is done."
@@ -33,6 +35,11 @@ class ClientHelloTest(FCPBaseTest):
 
 class GetPutTest(FCPBaseTest):
     "Tests get/put messages to the Freenet node."
+
+    def __init__(self, *args):
+        FCPBaseTest.__init__(self, *args)
+        self.timeout = 60 * 60
+
     @withClient
     @sequence
     def test_ksk(self, client):
@@ -46,11 +53,7 @@ class GetPutTest(FCPBaseTest):
         response = yield client.deferred["PutSuccessful"]
         self.assertEqual(response["Identifier"], put["Identifier"])
         # Then get.
-        get = IdentifiedMessage("ClientGet", [("URI", uri)])
-        client.sendMessage(get)
-        response = yield client.deferred["AllData"]
-        
+        response = yield client.get_direct(uri)
         # Finally check the data.
-        self.assertEqual(response["Identifier"], get["Identifier"])
         self.assertEqual(response["Data"], testdata)
 
