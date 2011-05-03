@@ -59,7 +59,7 @@ class GetPutTest(FCPBaseTest):
 
     @withClient
     @sequence
-    def test_ksk_errors(self, client)
+    def test_ksk_errors(self, client):
         "Now check that get errors function properly."
         exceptionThrown = None
         try:
