@@ -13,6 +13,7 @@ from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 from message import Message, IdentifiedMessage, ClientHello
+from error import FetchFailed
 
 class FreenetClientProtocol(protocol.Protocol):
     """
@@ -83,6 +84,7 @@ class FreenetClientProtocol(protocol.Protocol):
             self.transport.write('=')
             self.transport.write(str(value))
             self.transport.write('\n')
+
         if not data:
             self.transport.write('EndMessage\n')
             logging.info("Sent {0}".format(message.name))
@@ -102,6 +104,8 @@ class FreenetClientProtocol(protocol.Protocol):
         def process(message):
             if message.name == "AllData":
                 done.callback(message)
+            elif message.name == "GetFailed":
+                done.errback(FetchFailed(message))
             else:
                 self.sessions[session_id].addCallback(process)
 
