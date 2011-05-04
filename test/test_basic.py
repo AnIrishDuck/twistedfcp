@@ -6,7 +6,9 @@ from twistedfcp.protocol import (FreenetClientProtocol, IdentifiedMessage,
                                  logging)
 from twistedfcp.util import sequence
 
-logging.basicConfig(filename="twistedfcp.log", level=logging.DEBUG)
+logging.basicConfig(filename="twistedfcp.log", 
+                    filemode="w", 
+                    level=logging.DEBUG)
 
 def withClient(f):
     "Obtains a client and passes it to the wrapped function as an argument."
