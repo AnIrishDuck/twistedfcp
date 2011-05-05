@@ -5,6 +5,7 @@ from twisted.trial import unittest
 from twistedfcp.protocol import (FreenetClientProtocol, IdentifiedMessage, 
                                  logging)
 from twistedfcp.util import sequence
+from twistedfcp.error import FetchException
 
 logging.basicConfig(filename="twistedfcp.log", 
                     filemode="w", 
@@ -59,17 +60,24 @@ class GetPutTest(FCPBaseTest):
         # Finally check the data.
         self.assertEqual(response["Data"], testdata)
 
+class GetPutErrorTest(FCPBaseTest):
+    "Tests error modes for the get/put messages to the node."
+
+    def __init__(self, *args):
+        FCPBaseTest.__init__(self, *args)
+        self.timeout = 5 * 60
+
     @withClient
     @sequence
     def test_ksk_errors(self, client):
-        "Now check that get errors function properly."
+        "Test that getting an invalid KSK throws an exception."
+        _ = yield client.deferred['NodeHello']
+        import time; time.sleep(1.0)
         exceptionThrown = None
         try:
             response = yield client.get_direct("KSK@not-a-valid-ksk-at-all")   
-        except e:
-            exceptionThrown = e
-
-        if e:
+        except FetchException as e:
             self.assertEqual(e.code, 13)
         else:
             self.fail("No error thrown!")
+
