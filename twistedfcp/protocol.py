@@ -98,6 +98,12 @@ class FreenetClientProtocol(protocol.Protocol):
             logging.debug(message.args)
 
     def get_direct(self, uri):
+        """
+        Does a direct get of the given ``uri`` (data will be returned in the
+        body of the message in the ``Data`` field. Returns a ``Deferred`` event
+        that will fire when the final ``AllData`` message arrives.
+
+        """
         done = Deferred()
         get = IdentifiedMessage("ClientGet", [("URI", uri), ("Verbosity", 1)])
         session_id = get.id
