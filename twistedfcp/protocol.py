@@ -13,7 +13,7 @@ from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 from message import Message, IdentifiedMessage, ClientHello
-from error import FetchFailed
+from error import FetchException
 
 class FreenetClientProtocol(protocol.Protocol):
     """
