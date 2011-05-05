@@ -105,7 +105,7 @@ class FreenetClientProtocol(protocol.Protocol):
             if message.name == "AllData":
                 done.callback(message)
             elif message.name == "GetFailed":
-                done.errback(FetchFailed(message))
+                done.errback(FetchException(message))
             else:
                 self.sessions[session_id].addCallback(process)
 
