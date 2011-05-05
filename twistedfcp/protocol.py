@@ -99,7 +99,7 @@ class FreenetClientProtocol(protocol.Protocol):
 
     def get_direct(self, uri):
         done = Deferred()
-        get = IdentifiedMessage("ClientGet", [("URI", uri)])
+        get = IdentifiedMessage("ClientGet", [("URI", uri), ("Verbosity", 1)])
         session_id = get.id
         def process(message):
             if message.name == "AllData":
