@@ -13,16 +13,21 @@ def sequence(f):
     """
     def _inner(*args):
         gen = f(*args)
-        first = gen.next()
+        continue_defer = lambda d: d.addCallbacks(cb, er)
+
         def cb(*args):
             if len(args) == 1: args = args[0]
             try:
-                d = gen.send(args)
-                return d.addCallback(cb)
+                return continue_defer(gen.send(args))
             except StopIteration:
                 pass
-    
-        return first.addCallback(cb)
-    
+
+        def er(msg):
+            try:
+                return continue_defer(gen.throw(msg))
+            except StopIteration:
+                pass 
+
+        return continue_defer(gen.next())
     return _inner
 
