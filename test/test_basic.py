@@ -26,7 +26,7 @@ class FCPBaseTest(unittest.TestCase):
     "We always want to clean up after the test is done."
 
     def __init__(self, *args):
-        FCPBaseTest.__init__(self, *args)
+        unittest.TestCase.__init__(self, *args)
         self.timeout = 5 * 60
 
     def tearDown(self):
