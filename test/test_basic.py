@@ -5,7 +5,7 @@ from twisted.trial import unittest
 from twistedfcp.protocol import (FreenetClientProtocol, IdentifiedMessage, 
                                  logging)
 from twistedfcp.util import sequence
-from twistedfcp.error import FetchException
+from twistedfcp.error import PutException, FetchException, ProtocolException
 
 logging.basicConfig(filename="twistedfcp.log", 
                     filemode="w", 
@@ -64,13 +64,22 @@ class GetPutErrorTest(FCPBaseTest):
     @sequence
     def test_ksk_errors(self, client):
         "Test that getting an invalid KSK throws an exception."
-        _ = yield client.deferred['NodeHello']
-        import time; time.sleep(1.0)
-        exceptionThrown = None
         try:
-            response = yield client.get_direct("KSK@not-a-valid-ksk-at-all")   
-        except FetchException as e:
-            self.assertEqual(e.code, 13)
-        else:
-            self.fail("No error thrown!")
+            _ = yield client.deferred['NodeHello']
+            exceptionThrown = None
+            try:
+                response = yield client.get_direct("KSK@not-a-valid-ksk-at-all")
+            except FetchException as e:
+                self.assertEqual(e.code, 30)
+            else:
+                self.fail("No error thrown when getting a non-existant KSK!")
 
+            try:
+                response = yield client.put_direct("BS@NOT-A-URI", 
+                                                   "this should fail")
+            except PutException as e:
+                self.assertEqual(e.code, 1)
+            else:
+                self.fail("No error thrown when using an invalid URI on put!")
+        except Exception as e:
+            self.fail("Exception thrown: {0}".format(e))
