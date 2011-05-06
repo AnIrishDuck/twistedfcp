@@ -51,10 +51,8 @@ class GetPutTest(FCPBaseTest):
         uri = "KSK@" + now.strftime("%Y-%m-%d-%H-%M")
         # First put.
         testdata = "Testing 123..."
-        put = IdentifiedMessage("ClientPut", [("Verbosity", 1), ("URI", uri)])
-        client.sendMessage(put, data=testdata)
-        response = yield client.deferred["PutSuccessful"]
-        self.assertEqual(response["Identifier"], put["Identifier"])
+        response = yield client.put_direct(uri, testdata)
+        self.assertEqual(response["URI"], uri)
         # Then get.
         response = yield client.get_direct(uri)
         # Finally check the data.
