@@ -12,4 +12,3 @@ This project is an implementation of the `Freenet Client Protocol v2
 Testing is implemented using twisted's `trial
 <http://twistedmatrix.com/trac/wiki/TwistedTrial>`_ utility.
 
-
