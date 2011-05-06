@@ -24,6 +24,11 @@ def withClient(f):
 
 class FCPBaseTest(unittest.TestCase):
     "We always want to clean up after the test is done."
+
+    def __init__(self, *args):
+        FCPBaseTest.__init__(self, *args)
+        self.timeout = 5 * 60
+
     def tearDown(self):
         if self.client is not None:
             self.client.transport.loseConnection()
@@ -38,11 +43,6 @@ class ClientHelloTest(FCPBaseTest):
 
 class GetPutTest(FCPBaseTest):
     "Tests get/put messages to the Freenet node."
-
-    def __init__(self, *args):
-        FCPBaseTest.__init__(self, *args)
-        self.timeout = 5 * 60
-
     @withClient
     @sequence
     def test_ksk(self, client):
@@ -60,11 +60,6 @@ class GetPutTest(FCPBaseTest):
 
 class GetPutErrorTest(FCPBaseTest):
     "Tests error modes for the get/put messages to the node."
-
-    def __init__(self, *args):
-        FCPBaseTest.__init__(self, *args)
-        self.timeout = 5 * 60
-
     @withClient
     @sequence
     def test_ksk_errors(self, client):
