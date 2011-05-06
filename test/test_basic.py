@@ -25,8 +25,7 @@ def withClient(f):
 class FCPBaseTest(unittest.TestCase):
     "We always want to clean up after the test is done."
 
-    def __init__(self, *args):
-        unittest.TestCase.__init__(self, *args)
+    def setUp(self):
         self.timeout = 5 * 60
 
     def tearDown(self):
@@ -56,6 +55,17 @@ class GetPutTest(FCPBaseTest):
         # Then get.
         response = yield client.get_direct(uri)
         # Finally check the data.
+        self.assertEqual(response["Data"], testdata)
+
+    @withClient
+    @sequence
+    def test_chk(self, client):
+        _ = yield client.deferred['NodeHello']
+        uri = "CHK@"
+        testdata = "Testing CHK put..."
+        response = yield client.put_direct(uri, testdata)
+        uri = response["URI"]
+        response = yield client.get_direct(uri)
         self.assertEqual(response["Data"], testdata)
 
 class GetPutErrorTest(FCPBaseTest):
