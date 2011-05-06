@@ -17,10 +17,28 @@ from error import FetchException
 
 class FreenetClientProtocol(protocol.Protocol):
     """
-    Definition of the Freenet Client Protocol. 
+    Defines a twisted implementation of the Freenet Client Protocol. There are
+    several important things to note about the internals of this class: 
+    
+    - You can wait for specific message types by putting a ``Deferred`` in the
+      corresponding key of the ``deferred`` instance variable::
+
+        self.deferred['ClientHello'].addCallback(my_callback)
+
+    - You can wait for a message associated with a specific session (where all
+      messages associated with it have the same attached ``Identifier`` field)
+      by putting a ``Deferred`` in the corresponding key of the ``sessions``
+      instance variable::
+
+        self.sessions['Request101'].addCallback(session_callback)
+
+    - When a ``Deferred`` attached to this class by either the ``deferred`` or 
+      ``sessions`` variable fires, it is automatically removed, meaning that the
+      callback must re-attach if it wants to receive further notifications.
 
     """
     port = 9481
+
     def __init__(self):
         self.deferred = defaultdict(Deferred)
         self.sessions = defaultdict(Deferred)
@@ -60,6 +78,7 @@ class FreenetClientProtocol(protocol.Protocol):
         return data
 
     def _process(self, message, messageType):
+        "Processes the received message, firing the necessary deferreds."
         if messageType in self.deferred:
             deferred = self.deferred[messageType]
             deferred.callback(message)
