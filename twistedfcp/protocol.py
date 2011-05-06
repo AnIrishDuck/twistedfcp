@@ -13,7 +13,7 @@ from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 from message import Message, IdentifiedMessage, ClientHello
-from error import Failure, FetchException
+from error import Failure, error_dict
 
 class FreenetClientProtocol(protocol.Protocol):
     """
@@ -125,14 +125,15 @@ class FreenetClientProtocol(protocol.Protocol):
         done = Deferred()
 
         def callback(a):
-            try:
+            if a.name in error_dict.keys():
+                exception = error_dict[a.name]
+                done.errback(exception(a))
+            else:
                 result = handler(a)
                 if result:
                     done.callback(result)
                 else:
                     self.sessions[session_id].addCallback(callback) 
-            except Failure as e:
-                done.errback(e)
 
         session_id = msg.id
         self.sessions[session_id].addCallback(callback)
@@ -151,8 +152,6 @@ class FreenetClientProtocol(protocol.Protocol):
         def process(message):
             if message.name == "AllData":
                 return message
-            elif message.name == "GetFailed":
-                raise FetchException(message)
 
         return self.do_session(get, process)
 
