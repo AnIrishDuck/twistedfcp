@@ -13,7 +13,7 @@ from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 from message import Message, IdentifiedMessage, ClientHello
-from error import FetchException
+from error import Failure, FetchException
 
 class FreenetClientProtocol(protocol.Protocol):
     """
@@ -116,6 +116,30 @@ class FreenetClientProtocol(protocol.Protocol):
                                                              len(data)))
             logging.debug(message.args)
 
+    def do_session(self, msg, handler, data=None):
+        """
+        Wraps the given message processing function ``f`` in session handling
+        code.
+
+        """
+        done = Deferred()
+
+        def callback(a):
+            try:
+                result = handler(a)
+                if result:
+                    done.callback(result)
+                else:
+                    self.sessions[session_id].addCallback(callback) 
+            except Failure as e:
+                done.errback(e)
+
+        session_id = msg.id
+        self.sessions[session_id].addCallback(callback)
+        self.sendMessage(msg, data)
+
+        return done
+
     def get_direct(self, uri):
         """
         Does a direct get of the given ``uri`` (data will be returned in the
@@ -123,20 +147,29 @@ class FreenetClientProtocol(protocol.Protocol):
         that will fire when the final ``AllData`` message arrives.
 
         """
-        done = Deferred()
         get = IdentifiedMessage("ClientGet", [("URI", uri), ("Verbosity", 1)])
-        session_id = get.id
         def process(message):
             if message.name == "AllData":
-                done.callback(message)
+                return message
             elif message.name == "GetFailed":
-                done.errback(FetchException(message))
-            else:
-                self.sessions[session_id].addCallback(process)
+                raise FetchException(message)
 
-        self.sessions[session_id].addCallback(process)
-        self.sendMessage(get)
-        return done
+        return self.do_session(get, process)
+
+    def put_direct(self, uri, data):
+        """
+        Does a direct put to the given ``uri`` (data will be sent directly in
+        the body of the message in the ``Data`` field). Returns a ``Deferred``
+        even that will fire when the final ``PutSuccessful`` message arrives,
+        or will errback when a ``PutFailed`` message arrives.
+
+        """
+        put = IdentifiedMessage("ClientPut", [("URI", uri), ("Verbosity", 1)])
+        def process(message):
+            if message.name == "PutSuccessful":
+                return message
+
+        return self.do_session(put, process, data)
 
 class FCPFactory(protocol.Factory):
     "A protocol factory that uses FCP."
