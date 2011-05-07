@@ -170,6 +170,24 @@ class FreenetClientProtocol(protocol.Protocol):
 
         return self.do_session(put, process, data)
 
+    def get_ssk_keypair(self):
+        """
+        Requests a generated SSK keypair from the Freenet Node. This keypair can
+        then be used either as a SSK or USK in future get and put requests. 
+
+        The returned value is a ``Deferred`` that will be called with a 
+        list containing first the public, then the private key.
+
+        """
+        gen = IdentifiedMessage("GenerateSSK", [])
+        def process(message):
+            if message.name == "SSKKeypair":
+                public = message["InsertURI"]
+                private = message["RequestURI"]
+                return [public, private]
+
+        return self.do_session(gen, process)
+
 class FCPFactory(protocol.Factory):
     "A protocol factory that uses FCP."
     protocol = FreenetClientProtocol
