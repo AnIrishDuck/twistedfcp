@@ -10,7 +10,10 @@ class Message(object):
         for k, v in self.args:
             if k == el: return v
 
-        raise IndexError("The key {0} is not in the message.".format(el))
+        raise KeyError("The key {0} is not in the message.".format(el))
+
+    def __contains__(self, el):
+        return any(k == el for k, _ in self.args)
 
     def __init__(self, name, args):
         self.name = name

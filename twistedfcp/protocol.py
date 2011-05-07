@@ -74,20 +74,21 @@ class FreenetClientProtocol(protocol.Protocol):
             data = data[len('\nEndMessage\n'):]
         logging.info("Received {0}".format(messageType))
         logging.debug(message)
-        self._process(message, messageType)
+        self._process(Message(messageType, message.items()))
         return data
 
-    def _process(self, message, messageType):
+    def _process(self, message):
         "Processes the received message, firing the necessary deferreds."
-        if messageType in self.deferred:
-            deferred = self.deferred[messageType]
+        if message.name in self.deferred:
+            deferred = self.deferred[message.name]
+            del self.deferred[message.name]
             deferred.callback(message)
         if 'Identifier' in message: 
             session_id = message['Identifier']
             if session_id in self.sessions:
-                defer = self.sessions[session_id]
+                deferred = self.sessions[session_id]
                 del self.sessions[session_id]
-                result = defer.callback(Message(messageType, message.items()))
+                result = deferred.callback(message)
 
     def sendMessage(self, message, data=None):
         """
