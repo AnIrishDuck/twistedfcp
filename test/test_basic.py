@@ -71,12 +71,18 @@ class GetPutTest(FCPBaseTest):
     @withClient
     @sequence
     def test_ssk(self, client):
-        _ = yield client.deferred['NodeHello']
-        public, private = yield client.get_ssk_keypair()
-        testdata = "Testing SSK put..."
-        _ = yield client.put_direct(private, testdata)
-        response = yield client.get_direct(public)
-        self.assertEqual(response["Data"], testdata)
+        try:
+            _ = yield client.deferred['NodeHello']
+            public, private = yield client.get_ssk_keypair()
+            fragment = "test-update/test-fragment"
+            public += fragment
+            private += fragment
+            testdata = "Testing SSK put..."
+            _ = yield client.put_direct(private, testdata)
+            response = yield client.get_direct(public[:-1])
+            self.assertEqual(response["Data"], testdata)
+        except Exception as e:
+            self.fail("Exception thrown: {0}".format(e))
 
 class GetPutErrorTest(FCPBaseTest):
     "Tests error modes for the get/put messages to the node."
