@@ -84,6 +84,20 @@ class GetPutTest(FCPBaseTest):
         except Exception as e:
             self.fail("Exception thrown: {0}".format(e))
 
+class PeerListTest(FCPBaseTest):
+    "Tests that the user can list clients from the node."
+    @withClient
+    @sequence
+    def test_peer_list(self, client):
+        try:
+            _ = yield client.deferred['NodeHello']
+            clients = yield client.get_all_peers()
+            self.assertTrue(len(clients) > 0)
+            for client in clients:
+                self.assertTrue(client['identity'] is not None)
+        except Exception as e:
+            self.fail("Exception thrown: {0}".format(e))
+
 class GetPutErrorTest(FCPBaseTest):
     "Tests error modes for the get/put messages to the node."
     @withClient
