@@ -97,47 +97,37 @@ class GetPutTest(FCPBaseTest):
 
     @sequence
     def test_ssk(self):
-        try:
-            _ = yield self.client.deferred['NodeHello']
-            public, private = yield self.client.get_ssk_keypair()
-            fragment = "test-update/test-fragment"
-            public += fragment
-            private += fragment
-            testdata = "Testing SSK put..."
-            _ = yield self.client.put_direct(private, testdata)
-            response = yield self.client.get_direct(public[:-1])
-            self.assertEqual(response["Data"], testdata)
-        except Exception as e:
-            self.fail("Exception thrown: {0}".format(e))
+        _ = yield self.client.deferred['NodeHello']
+        public, private = yield self.client.get_ssk_keypair()
+        fragment = "test-update/test-fragment"
+        public += fragment
+        private += fragment
+        testdata = "Testing SSK put..."
+        _ = yield self.client.put_direct(private, testdata)
+        response = yield self.client.get_direct(public[:-1])
+        self.assertEqual(response["Data"], testdata)
 
 class PeerListTest(FCPBaseTest):
     "Tests that the user can list clients from the node."
     @sequence
     def test_peer_list(self):
-        try:
-            _ = yield self.client.deferred['NodeHello']
-            clients = yield self.client.get_all_peers()
-            self.assertTrue(len(clients) > 0)
-            for client in clients:
-                self.assertTrue(client['identity'] is not None)
-        except Exception as e:
-            self.fail("Exception thrown: {0}".format(e))
+        _ = yield self.client.deferred['NodeHello']
+        clients = yield self.client.get_all_peers()
+        self.assertTrue(len(clients) > 0)
+        for client in (dict(l) for l in clients):
+            self.assertTrue(client['identity'] is not None)
 
 class GetPutErrorTest(FCPBaseTest):
     "Tests error modes for the get/put messages to the node."
     @sequence
     def test_ksk_errors(self):
         "Test that getting an invalid KSK throws an exception."
+        _ = yield self.client.deferred['NodeHello']
+        exceptionThrown = None
         try:
-            _ = yield self.client.deferred['NodeHello']
-            exceptionThrown = None
-            try:
-                uri = "KSK@not-a-valid-ksk-at-all"
-                response = yield self.client.get_direct(uri)
-            except FetchException as e:
-                self.assertEqual(e.code, 13)
-            else:
-                self.fail("No error thrown when getting a non-existant KSK!")
-
-        except Exception as e:
-            self.fail("Exception thrown: {0}".format(e))
+            uri = "KSK@not-a-valid-ksk-at-all"
+            response = yield self.client.get_direct(uri)
+        except FetchException as e:
+            self.assertEqual(e.code, 13)
+        else:
+            self.fail("No error thrown when getting a non-existant KSK!")
