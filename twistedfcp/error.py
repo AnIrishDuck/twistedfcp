@@ -10,6 +10,13 @@ class FCPException(Failure, Exception):
 
 class MalformedMessageException(FCPException):
     "Indicates that the Freenet node sent a malformed message to the client."
+    def __init__(self):
+        FCPException.__init__(self, "The message sent was malformed.")
+
+class NodeTimeout(FCPException):
+    "Indicates that the Freenet node has timed out while waiting for a result."
+    def __init__(self): 
+        FCPException.__init__(self, "The node timed out.")
 
 class MessageException(FCPException):
     "Base class for all exceptions that are raised by a specific FCP message."

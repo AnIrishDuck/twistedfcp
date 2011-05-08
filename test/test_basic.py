@@ -20,6 +20,8 @@ class ClientTest(unittest.TestCase):
     def setUp(self):
         creator = protocol.ClientCreator(reactor, FreenetClientProtocol)
         def cb(client):
+            if hasattr(self, "fcp_timeout"):
+                client.timeout = self.fcp_timeout
             self.client = client
 
         connected = creator.connectTCP('localhost', self.port)
@@ -40,11 +42,11 @@ class LoopbackBaseTest(ClientTest):
     This is the quintessential unit test with mocked external dependencies.
 
     """
+    fcp_timeout = 5
     port = TestServerProtocol.port
 
     def __init__(self, *args):
         ClientTest.__init__(self, *args)
-        self.timeout = 5
 
     def setUp(self):
         self.server = reactor.listenTCP(self.port, TestServerFactory())

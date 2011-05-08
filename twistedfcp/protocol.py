@@ -13,7 +13,7 @@ from collections import defaultdict
 from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 from message import Message, IdentifiedMessage, ClientHello
-from error import Failure, error_dict
+from error import NodeTimeout, Failure, error_dict
 from util import MessageBasedProtocol
 
 class FreenetClientProtocol(MessageBasedProtocol):
@@ -37,13 +37,20 @@ class FreenetClientProtocol(MessageBasedProtocol):
       ``sessions`` variable fires, it is automatically removed, meaning that the
       callback must re-attach if it wants to receive further notifications.
 
+    - All sessions will be forcibly ended (with a ``NodeTimeout`` errback) after
+      a set period of time. This period of time is set by default to 
+      ``FreenetClientProtocol.default_timeout`` and can be changed by setting
+      ``self.timeout`` for a given instance.
+
     """
+    default_timeout = 10 * 60
     port = 9481
 
     def __init__(self):
         MessageBasedProtocol.__init__(self)
         self.deferred = defaultdict(Deferred)
         self.sessions = defaultdict(Deferred)
+        self.timeout = self.default_timeout
 
     def connectionMade(self):
         "On connection, sends a FCP ClientHello message."
@@ -66,23 +73,33 @@ class FreenetClientProtocol(MessageBasedProtocol):
     def do_session(self, msg, handler, data=None):
         """
         Wraps the given message processing function ``f`` in session handling
-        code.
+        code. Ends the session if it lasts longer than ``self.timeout`` seconds.
 
         """
         done = Deferred()
+        session_id = msg.id
+
+        def timeout():
+            text = 'The node timed out on session "{0}"'
+            logging.error(text.format(session_id))
+            del self.sessions[session_id]
+            done.errback(NodeTimeout())
+
+        timeout = reactor.callLater(self.timeout, timeout)
 
         def callback(a):
             if a.name in error_dict.keys():
                 exception = error_dict[a.name]
+                timeout.cancel()
                 done.errback(exception(a))
             else:
                 result = handler(a)
                 if result:
+                    timeout.cancel()
                     done.callback(result)
                 else:
                     self.sessions[session_id].addCallback(callback) 
 
-        session_id = msg.id
         self.sessions[session_id].addCallback(callback)
         self.sendMessage(msg, data)
 
