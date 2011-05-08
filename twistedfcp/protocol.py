@@ -14,8 +14,9 @@ from twisted.internet import reactor, protocol
 from twisted.internet.defer import Deferred
 from message import Message, IdentifiedMessage, ClientHello
 from error import Failure, error_dict
+from util import MessageBasedProtocol
 
-class FreenetClientProtocol(protocol.Protocol):
+class FreenetClientProtocol(MessageBasedProtocol):
     """
     Defines a twisted implementation of the Freenet Client Protocol. There are
     several important things to note about the internals of this class: 
@@ -40,6 +41,7 @@ class FreenetClientProtocol(protocol.Protocol):
     port = 9481
 
     def __init__(self):
+        MessageBasedProtocol.__init__(self)
         self.deferred = defaultdict(Deferred)
         self.sessions = defaultdict(Deferred)
 
@@ -47,38 +49,9 @@ class FreenetClientProtocol(protocol.Protocol):
         "On connection, sends a FCP ClientHello message."
         self.sendMessage(ClientHello)
 
-    def dataReceived(self, data):
-        "Parses in received packets until none remain."
-        partial = data
-        while partial: 
-            partial = self._parseOne(partial)
-    
-    def _parseOne(self, data):
-        """
-        Parses a single packet from ``data`` and handles it. Returns the remnant
-        of the ``data`` after the first message has been removed.
-
-        """
-        safe_index = lambda x: data.index(x) if x in data else len(data)
-        endHeader = min(safe_index(p) for p in ['\nData\n', '\nEndMessage\n'])
-        header, data = data[:endHeader], data[endHeader:]
-
-        header = header.split('\n')
-        messageType = header[0]
-        message = dict(line.split('=') for line in header[1:])
-        if data.startswith('\nData\n'):
-            l = int(message['DataLength'])
-            data = data[len('\nData\n'):]
-            message['Data'], data = data[:l], data[l:]
-        else:
-            data = data[len('\nEndMessage\n'):]
-        logging.info("Received {0}".format(messageType))
-        logging.debug(message)
-        self._process(Message(messageType, message.items()))
-        return data
-
-    def _process(self, message):
+    def message_received(self, messageType, messageItems):
         "Processes the received message, firing the necessary deferreds."
+        message = Message(messageType, messageItems.items())
         if message.name in self.deferred:
             deferred = self.deferred[message.name]
             del self.deferred[message.name]
@@ -89,33 +62,6 @@ class FreenetClientProtocol(protocol.Protocol):
                 deferred = self.sessions[session_id]
                 del self.sessions[session_id]
                 result = deferred.callback(message)
-
-    def sendMessage(self, message, data=None):
-        """
-        Sends a single ``message`` to the server. If ``data`` is specified, it
-        gets tacked on to the end of the message and a ``DataLength`` field is
-        added to the message arguments.
-
-        """
-        self.transport.write(message.name)
-        self.transport.write('\n')
-        for key, value in message.args:
-            self.transport.write(str(key))
-            self.transport.write('=')
-            self.transport.write(str(value))
-            self.transport.write('\n')
-
-        if not data:
-            self.transport.write('EndMessage\n')
-            logging.info("Sent {0}".format(message.name))
-            logging.debug(message.args)
-        else:
-            self.transport.write('DataLength={0}\n'.format(len(data)))
-            self.transport.write('Data\n')
-            self.transport.write(data)
-            logging.info("Sent {0} (data length={1})".format(message.name, 
-                                                             len(data)))
-            logging.debug(message.args)
 
     def do_session(self, msg, handler, data=None):
         """
@@ -188,6 +134,24 @@ class FreenetClientProtocol(protocol.Protocol):
                 return [public, private]
 
         return self.do_session(gen, process)
+
+    def get_all_peers(self):
+        list_msg = Message("ListPeers", [])
+        peers = []
+        done = Deferred()
+
+        def node_info(message):
+            peers.append(message.args)
+            self.deferred["NodeData"].addCallback(node_info)
+
+        def end_list(message):
+            del self.deferred["NodeData"]
+            done.callback(peers)
+
+        self.deferred["NodeData"].addCallback(node_info)
+        self.deferred["EndListPeers"].addCallback(end_list)
+        self.sendMessage(list_msg)
+        return done
 
 class FCPFactory(protocol.Factory):
     "A protocol factory that uses FCP."
