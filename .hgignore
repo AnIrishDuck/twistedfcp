@@ -1,3 +1,4 @@
 relre:^.+\.pyc$
 relre:^.+\.swp$
 glob:_trial_temp/*
+glob:doc/_build/**
