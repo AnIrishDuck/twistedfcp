@@ -50,5 +50,12 @@ class TestServerProtocol(MessageBasedProtocol):
                                  [("Identifier", message["Identifier"]),
                                   ("URI", uri)]))
 
+    def ListPeers(self, message):
+        for x in xrange(5):
+            msg = Message("NodeData", [("identity", hex(x))])
+            self.sendMessage(msg)
+
+        self.sendMessage(Message("EndListPeers", []))
+
 class TestServerFactory(ServerFactory):
     protocol = TestServerProtocol
