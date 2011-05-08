@@ -1,97 +1,120 @@
 from datetime import datetime
 
 from twisted.internet import reactor, protocol
+from twisted.internet import defer
 from twisted.trial import unittest
 from twistedfcp.protocol import (FreenetClientProtocol, IdentifiedMessage, 
                                  logging)
 from twistedfcp.util import sequence
 from twistedfcp.error import PutException, FetchException, ProtocolException
 
+from simple_server import TestServerProtocol, TestServerFactory
+
 logging.basicConfig(filename="twistedfcp.log", 
                     filemode="w", 
                     level=logging.DEBUG)
 
-def withClient(f):
-    "Obtains a client and passes it to the wrapped function as an argument."
-    def _inner(self):
+class ClientTest(unittest.TestCase):
+    "Test that connects to some server before starting."
+
+    def setUp(self):
         creator = protocol.ClientCreator(reactor, FreenetClientProtocol)
         def cb(client):
             self.client = client
-            return f(self, client)
-        defer = creator.connectTCP('localhost', FreenetClientProtocol.port)
-        return defer.addCallback(cb)
-    return _inner
 
-class FCPBaseTest(unittest.TestCase):
-    "We always want to clean up after the test is done."
-
-    def setUp(self):
-        self.timeout = 5 * 60
+        connected = creator.connectTCP('localhost', self.port)
+        return connected.addCallback(cb)
 
     def tearDown(self):
-        if self.client is not None:
+        shutdowns = []
+        if hasattr(self, "client"):
             self.client.transport.loseConnection()
+        if hasattr(self, "server"):
+            shutdowns.append(defer.maybeDeferred(self.server.stopListening))
+
+        return defer.gatherResults(shutdowns)
+
+class LoopbackBaseTest(ClientTest):
+    """
+    All tests of this type will spawn a ``TestServerFactory`` and connect to it.
+    This is the quintessential unit test with mocked external dependencies.
+
+    """
+    port = TestServerProtocol.port
+
+    def __init__(self, *args):
+        ClientTest.__init__(self, *args)
+        self.timeout = 5
+
+    def setUp(self):
+        self.server = reactor.listenTCP(self.port, TestServerFactory())
+        return ClientTest.setUp(self)
+
+class IntegrationBaseTest(ClientTest):
+    """
+    This is a real "integration test" that connects directly to the Freenet node
+    running on ``localhost``.
+
+    """
+    port = FreenetClientProtocol.port
+
+FCPBaseTest = LoopbackBaseTest
 
 class ClientHelloTest(FCPBaseTest):
     "Tests that the Freenet node responds to a ClientHello message."
-    @withClient
     @sequence
-    def test_hello(self, client):
-        msg = yield client.deferred['NodeHello']
+    def test_hello(self):
+        msg = yield self.client.deferred['NodeHello']
         self.assertEquals(msg['FCPVersion'], '2.0')
 
 class GetPutTest(FCPBaseTest):
     "Tests get/put messages to the Freenet node."
-    @withClient
     @sequence
-    def test_ksk(self, client):
-        _ = yield client.deferred['NodeHello']
+    def test_ksk(self):
+        _ = yield self.client.deferred['NodeHello']
         now = datetime.now()
         uri = "KSK@" + now.strftime("%Y-%m-%d-%H-%M")
         # First put.
         testdata = "Testing 123..."
-        response = yield client.put_direct(uri, testdata)
+        response = yield self.client.put_direct(uri, testdata)
         self.assertEqual(response["URI"], uri)
         # Then get.
-        response = yield client.get_direct(uri)
+        response = yield self.client.get_direct(uri)
         # Finally check the data.
         self.assertEqual(response["Data"], testdata)
 
-    @withClient
     @sequence
-    def test_chk(self, client):
-        _ = yield client.deferred['NodeHello']
+    def test_chk(self):
+        _ = yield self.client.deferred['NodeHello']
         uri = "CHK@"
         testdata = "Testing CHK put..."
-        response = yield client.put_direct(uri, testdata)
+        response = yield self.client.put_direct(uri, testdata)
         uri = response["URI"]
-        response = yield client.get_direct(uri)
+        response = yield self.client.get_direct(uri)
         self.assertEqual(response["Data"], testdata)
 
-    @withClient
     @sequence
-    def test_ssk(self, client):
+    def test_ssk(self):
         try:
-            _ = yield client.deferred['NodeHello']
-            public, private = yield client.get_ssk_keypair()
+            _ = yield self.client.deferred['NodeHello']
+            public, private = yield self.client.get_ssk_keypair()
             fragment = "test-update/test-fragment"
             public += fragment
             private += fragment
             testdata = "Testing SSK put..."
-            _ = yield client.put_direct(private, testdata)
-            response = yield client.get_direct(public[:-1])
+            _ = yield self.client.put_direct(private, testdata)
+            response = yield self.client.get_direct(public[:-1])
             self.assertEqual(response["Data"], testdata)
         except Exception as e:
             self.fail("Exception thrown: {0}".format(e))
 
 class PeerListTest(FCPBaseTest):
     "Tests that the user can list clients from the node."
-    @withClient
     @sequence
-    def test_peer_list(self, client):
+    def test_peer_list(self):
         try:
-            _ = yield client.deferred['NodeHello']
-            clients = yield client.get_all_peers()
+            _ = yield self.client.deferred['NodeHello']
+            clients = yield self.client.get_all_peers()
             self.assertTrue(len(clients) > 0)
             for client in clients:
                 self.assertTrue(client['identity'] is not None)
@@ -100,26 +123,19 @@ class PeerListTest(FCPBaseTest):
 
 class GetPutErrorTest(FCPBaseTest):
     "Tests error modes for the get/put messages to the node."
-    @withClient
     @sequence
-    def test_ksk_errors(self, client):
+    def test_ksk_errors(self):
         "Test that getting an invalid KSK throws an exception."
         try:
-            _ = yield client.deferred['NodeHello']
+            _ = yield self.client.deferred['NodeHello']
             exceptionThrown = None
             try:
-                response = yield client.get_direct("KSK@not-a-valid-ksk-at-all")
+                uri = "KSK@not-a-valid-ksk-at-all"
+                response = yield self.client.get_direct(uri)
             except FetchException as e:
-                self.assertEqual(e.code, 30)
+                self.assertEqual(e.code, 13)
             else:
                 self.fail("No error thrown when getting a non-existant KSK!")
 
-            try:
-                response = yield client.put_direct("BS@NOT-A-URI", 
-                                                   "this should fail")
-            except PutException as e:
-                self.assertEqual(e.code, 1)
-            else:
-                self.fail("No error thrown when using an invalid URI on put!")
         except Exception as e:
             self.fail("Exception thrown: {0}".format(e))
