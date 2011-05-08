@@ -5,7 +5,7 @@ transform raw messages into Python ``Exception`` objects.
 """
 from twisted.python.failure import Failure
 
-class FCPException(Failure, Exception):
+class FCPException(Exception):
     "Base exception for all FCP errors."
 
 class MalformedMessageException(FCPException):

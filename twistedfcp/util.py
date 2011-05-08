@@ -26,7 +26,8 @@ def sequence(f):
 
         def er(msg):
             try:
-                return continue_defer(gen.throw(msg))
+                ex = msg.value
+                return continue_defer(gen.throw(ex))
             except StopIteration:
                 pass 
 
