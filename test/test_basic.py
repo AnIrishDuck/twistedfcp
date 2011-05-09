@@ -45,9 +45,6 @@ class LoopbackBaseTest(ClientTest):
     fcp_timeout = 5
     port = TestServerProtocol.port
 
-    def __init__(self, *args):
-        ClientTest.__init__(self, *args)
-
     def setUp(self):
         self.server = reactor.listenTCP(self.port, TestServerFactory())
         return ClientTest.setUp(self)
@@ -58,7 +55,12 @@ class IntegrationBaseTest(ClientTest):
     running on ``localhost``.
 
     """
+    fcp_timeout = 10 * 60
     port = FreenetClientProtocol.port
+
+    def __init__(self, *args):
+        ClientTest.__init__(self, *args)
+        self.loopback = None
 
 FCPBaseTest = LoopbackBaseTest
 
