@@ -60,7 +60,7 @@ class IntegrationBaseTest(ClientTest):
 
     def __init__(self, *args):
         ClientTest.__init__(self, *args)
-        self.loopback = None
+        self.timeout = 1000000
 
 FCPBaseTest = LoopbackBaseTest
 
