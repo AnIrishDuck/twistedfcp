@@ -31,30 +31,27 @@ class MessageException(FCPException):
     def __str__(self): return self.__repr__()
 
 class FetchException(MessageException):
-    "An exception indicating a prior fetch operation has failed."
+    "Indicates a prior fetch operation has failed."
     message = "GetFailed"
 
 class PutException(MessageException):
-    "An exception indicating a prior put operation has failed."
+    "Indicates a prior put operation has failed."
     message = "PutFailed"
 
 class ProtocolException(MessageException):
-    "An exception indicating a problem with the Freenet protocol."
+    "Indicates a problem with the Freenet protocol."
     message = "ProtocolError"
 
 class IdentifierException(MessageException):
-    """
-    An exception indicating that the client is attempting to reuse an 
-    Identifier.
-    """
+    "Indicates that the client is attempting to reuse an Identifier."
     message = "IdentifierCollision"
 
 class UnknownNodeException(MessageException):
-    "An exception indicating that the specified node is not known."
+    "Indicates that the specified node is not known."
     message = "UnknownNodeIdentifier"
 
 class UnknownPeerNoteException(MessageException):
-    "An exception indicating that the specified peer note type is not known."
+    "Indicates that the specified peer note type is not known."
     message = "UnknonwPeerNoteType"
 
 error_dict = dict((klass.message, klass) 

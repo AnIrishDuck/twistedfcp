@@ -7,10 +7,22 @@ from twisted.protocols.basic import LineReceiver
 
 def sequence(f):
     """
-    Sequences a generator function through deferreds. Takes each sent 
-    ``Deferred`` and attaches a callback to it that sends the generator
-    function the results when they arrive. Continues to recursively do this
-    until the generator function is exhausted.
+    Decorator that sequences a generator function that yields deferreds. 
+    Example::
+            
+        def test():
+            a = yield some_long_task() # Assuming this returns a Deferred
+            b = yield some_new_task(a)
+
+    Executes the intial part of the generator to get the first ``Deferred``.
+    Then, continually steps through the generator by adding the following to the
+    deferred:
+    
+    ============    ==========================================================
+    ``callback``    Sends the argument of ``callback`` back into the generator.
+    ``errback``     Extracts the exception contained in the passed ``Failure``.
+                    Then, throws this exception back into the generator.
+    ============    ==========================================================
 
     """
     def _inner(*args):
