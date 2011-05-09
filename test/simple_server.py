@@ -52,7 +52,7 @@ class TestServerProtocol(MessageBasedProtocol):
 
     def ListPeers(self, message):
         for x in xrange(5):
-            msg = Message("NodeData", [("identity", hex(x))])
+            msg = Message("Peer", [("identity", hex(x))])
             self.sendMessage(msg)
 
         self.sendMessage(Message("EndListPeers", []))

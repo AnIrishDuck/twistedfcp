@@ -159,13 +159,13 @@ class FreenetClientProtocol(MessageBasedProtocol):
 
         def node_info(message):
             peers.append(message.args)
-            self.deferred["NodeData"].addCallback(node_info)
+            self.deferred["Peer"].addCallback(node_info)
 
         def end_list(message):
-            del self.deferred["NodeData"]
+            del self.deferred["Peer"]
             done.callback(peers)
 
-        self.deferred["NodeData"].addCallback(node_info)
+        self.deferred["Peer"].addCallback(node_info)
         self.deferred["EndListPeers"].addCallback(end_list)
         self.sendMessage(list_msg)
         return done
