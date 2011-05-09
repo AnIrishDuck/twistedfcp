@@ -7,6 +7,7 @@ Contents:
    :maxdepth: 2
 
    core
+   helpers
 
 Indices and tables
 ==================
