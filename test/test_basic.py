@@ -113,7 +113,9 @@ class PeerListTest(FCPBaseTest):
     def test_peer_list(self):
         _ = yield self.client.deferred['NodeHello']
         clients = yield self.client.get_all_peers()
-        self.assertTrue(len(clients) > 0)
+        # Ideally the client should be connected to 12 peers. Expect at least
+        # half that.
+        self.assertTrue(len(clients) > 6)
         for client in (dict(l) for l in clients):
             self.assertTrue(client['identity'] is not None)
 
