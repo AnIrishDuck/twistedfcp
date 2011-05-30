@@ -5,47 +5,6 @@ Defines utility functions for the ``twistedfcp`` module.
 import logging
 from twisted.protocols.basic import LineReceiver
 
-def sequence(f):
-    """
-    Decorator that sequences a generator function that yields deferreds. 
-    Example::
-            
-        def test():
-            a = yield some_long_task() # Assuming this returns a Deferred
-            b = yield some_new_task(a)
-
-    Executes the intial part of the generator to get the first ``Deferred``.
-    Then, continually steps through the generator by adding the following to the
-    deferred:
-    
-    ============    ==========================================================
-    ``callback``    Sends the argument of ``callback`` back into the generator.
-    ``errback``     Extracts the exception contained in the passed ``Failure``.
-                    Then, throws this exception back into the generator.
-    ============    ==========================================================
-
-    """
-    def _inner(*args):
-        gen = f(*args)
-        continue_defer = lambda d: d.addCallbacks(cb, er)
-
-        def cb(*args):
-            if len(args) == 1: args = args[0]
-            try:
-                return continue_defer(gen.send(args))
-            except StopIteration:
-                pass
-
-        def er(msg):
-            try:
-                ex = msg.value
-                return continue_defer(gen.throw(ex))
-            except StopIteration:
-                pass 
-
-        return continue_defer(gen.next())
-    return _inner
-
 class MessageBasedProtocol(LineReceiver):
     """
     Defines a protocol that parses freenet-style messages. These messages take

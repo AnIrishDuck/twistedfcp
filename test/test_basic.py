@@ -3,9 +3,9 @@ from datetime import datetime
 from twisted.internet import reactor, protocol
 from twisted.internet import defer
 from twisted.trial import unittest
+from twisted.internet.defer import inlineCallbacks
 from twistedfcp.protocol import (FreenetClientProtocol, IdentifiedMessage, 
                                  logging)
-from twistedfcp.util import sequence
 from twistedfcp.error import PutException, FetchException, ProtocolException
 
 from simple_server import TestServerProtocol, TestServerFactory
@@ -66,14 +66,14 @@ FCPBaseTest = LoopbackBaseTest
 
 class ClientHelloTest(FCPBaseTest):
     "Tests that the Freenet node responds to a ClientHello message."
-    @sequence
+    @inlineCallbacks
     def test_hello(self):
         msg = yield self.client.deferred['NodeHello']
         self.assertEquals(msg['FCPVersion'], '2.0')
 
 class GetPutTest(FCPBaseTest):
     "Tests get/put messages to the Freenet node."
-    @sequence
+    @inlineCallbacks
     def test_ksk(self):
         _ = yield self.client.deferred['NodeHello']
         now = datetime.now()
@@ -87,7 +87,7 @@ class GetPutTest(FCPBaseTest):
         # Finally check the data.
         self.assertEqual(response["Data"], testdata)
 
-    @sequence
+    @inlineCallbacks
     def test_chk(self):
         _ = yield self.client.deferred['NodeHello']
         uri = "CHK@"
@@ -97,11 +97,11 @@ class GetPutTest(FCPBaseTest):
         response = yield self.client.get_direct(uri)
         self.assertEqual(response["Data"], testdata)
 
-    @sequence
+    @inlineCallbacks
     def test_ssk(self):
         _ = yield self.client.deferred['NodeHello']
         public, private = yield self.client.get_ssk_keypair()
-        fragment = "test-update/test-fragment"
+        fragment = "testupdate/0"
         public += fragment
         private += fragment
         testdata = "Testing SSK put..."
@@ -111,7 +111,7 @@ class GetPutTest(FCPBaseTest):
 
 class PeerListTest(FCPBaseTest):
     "Tests that the user can list clients from the node."
-    @sequence
+    @inlineCallbacks
     def test_peer_list(self):
         _ = yield self.client.deferred['NodeHello']
         clients = yield self.client.get_all_peers()
@@ -123,7 +123,7 @@ class PeerListTest(FCPBaseTest):
 
 class GetPutErrorTest(FCPBaseTest):
     "Tests error modes for the get/put messages to the node."
-    @sequence
+    @inlineCallbacks
     def test_ksk_errors(self):
         "Test that getting an invalid KSK throws an exception."
         _ = yield self.client.deferred['NodeHello']
